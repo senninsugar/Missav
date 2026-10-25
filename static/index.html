@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MissAV Client</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<style>
+:root{--bg:#0b0910;--panel:#141019;--card:#181320;--line:#2a2233;--line2:#3a2f47;
+--pink:#ff2d78;--pink2:#ff74ab;--txt:#f2ecf7;--dim:#9c92ab;--ok:#3ddc84;--gold:#ffd23f;--err:#ff4d4d}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);
+font:13px/1.5 system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--pink2);text-decoration:none}
+header.top{padding:13px 16px;background:linear-gradient(135deg,#2a0d1c,#160f1e 60%,#0b0910);
+border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.logo{font-size:19px;font-weight:800;letter-spacing:-.4px;
+background:linear-gradient(90deg,var(--pink),var(--pink2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{font-size:9px;letter-spacing:.7px;padding:3px 7px;border-radius:99px;background:rgba(255,45,120,.14);
+border:1px solid rgba(255,45,120,.4);color:var(--pink2);font-family:ui-monospace,monospace}
+.sp{flex:1}
+.st{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:99px;background:#5a5064;transition:.2s}
+.dot.on{background:var(--ok);box-shadow:0 0 8px rgba(61,220,132,.7)}
+.dot.err{background:var(--err);box-shadow:0 0 8px rgba(255,77,77,.7)}
+button{font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;
+background:linear-gradient(135deg,var(--pink),#dc0f5c);color:#fff;white-space:nowrap}
+button:hover{filter:brightness(1.13)}
+button:disabled{opacity:.35;cursor:default;filter:none}
+button.g{background:#1e1828;border:1px solid var(--line2);color:var(--txt);font-weight:600}
+button.sm{padding:5px 10px;font-size:11px}
+input,select{font:inherit;font-size:12px;background:#0a0810;border:1px solid var(--line);border-radius:9px;
+padding:9px 11px;color:var(--txt);outline:none;min-width:0}
+input:focus,select:focus{border-color:var(--pink)}
+.search{display:flex;gap:7px;margin-top:11px}
+.search input{flex:1}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;background:#100d16;border-bottom:1px solid var(--line)}
+.tabs.sub{background:#0d0b12;padding-top:0}
+.chip{font-size:11px;font-weight:600;padding:5px 11px;border-radius:99px;background:#1b1523;border:1px solid var(--line);
+color:var(--dim);cursor:pointer}
+.chip:hover{color:var(--txt);border-color:var(--line2)}
+.chip.on{background:rgba(255,45,120,.18);border-color:var(--pink);color:#fff}
+.bar{display:flex;gap:7px;align-items:center;padding:9px 16px;background:#0d0b12;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar h2{font-size:14px}
+.cnt{font-size:11px;color:var(--dim)}
+main{padding:14px 16px;min-height:55vh}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;cursor:pointer;transition:.15s}
+.card:hover{border-color:var(--pink);transform:translateY(-2px)}
+.th{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:.25s}
+.th.playing video{opacity:1}
+.dur,.sub{position:absolute;bottom:4px;font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(0,0,0,.78);color:#fff}
+.dur{right:4px}
+.sub{left:4px;background:rgba(255,45,120,.85);font-weight:700}
+.fav{position:absolute;top:4px;right:4px;width:22px;height:22px;padding:0;border-radius:99px;
+background:rgba(0,0,0,.55);color:#8d8497;font-size:12px;line-height:1;font-weight:400}
+.fav.on{color:var(--gold)}
+.card h3{font-size:11px;font-weight:500;line-height:1.35;height:30px;overflow:hidden;padding:7px 8px 0;
+display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card .code{display:block;font-size:9.5px;color:var(--dim);padding:4px 8px 9px;font-family:ui-monospace,monospace}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(106px,1fr));gap:10px}
+.acard{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;cursor:pointer;text-align:center}
+.acard:hover{border-color:var(--pink);transform:translateY(-2px)}
+.acard img{width:100%;aspect-ratio:3/4;object-fit:cover;background:#000;display:block}
+.acard b{display:block;font-size:11px;padding:6px 6px 2px;font-weight:600}
+.acard span{display:block;font-size:9.5px;color:var(--dim);padding-bottom:8px}
+.tlist{display:flex;flex-direction:column;gap:6px}
+.titem{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+border-radius:10px;padding:10px 12px;cursor:pointer;font-size:12px}
+.titem:hover{border-color:var(--pink)}
+.titem .rk{width:26px;text-align:center;font-weight:800;color:var(--pink2)}
+.titem .nm{flex:1;font-weight:600}
+.titem .ct{font-size:10px;color:var(--dim)}
+.pager{display:flex;justify-content:center;align-items:center;gap:12px;padding:18px 0 6px}
+.empty{text-align:center;color:var(--dim);padding:55px 20px;font-size:12px;line-height:2}
+.sk{background:linear-gradient(90deg,#161120,#1e1828,#161120);background-size:200% 100%;
+animation:sh 1.2s linear infinite;border-radius:11px;aspect-ratio:16/9}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+#modal{position:fixed;inset:0;background:rgba(5,3,8,.9);display:none;align-items:flex-start;justify-content:center;
+padding:16px;overflow:auto;z-index:60}
+#modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line2);border-radius:14px;width:100%;max-width:700px;overflow:hidden}
+.sheet .head{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:11px 14px;z-index:2}
+.sheet .head b{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbody{padding:14px}
+#player{width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
+#player video,#player iframe{width:100%;height:100%;border:0;display:block}
+.noplay{color:var(--dim);font-size:12px;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:20px}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:5px 10px;font-size:11.5px;margin-top:13px}
+.kv dt{color:var(--dim)}
+.kv dd{word-break:break-word}
+.desc{font-size:11.5px;color:#c9c0d6;line-height:1.75;margin-top:13px;max-height:150px;overflow:auto;
+border-left:2px solid var(--line2);padding-left:11px}
+.acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+.note{background:linear-gradient(135deg,rgba(255,45,120,.1),transparent);border:1px solid rgba(255,45,120,.35);
+border-radius:11px;padding:14px;margin-bottom:14px;font-size:11.5px;line-height:1.85;color:var(--dim)}
+.note h4{font-size:12.5px;color:var(--txt);margin-bottom:8px}
+.note code{background:#0a0810;padding:2px 6px;border-radius:5px;color:var(--pink2);font-size:11px;font-family:ui-monospace,monospace}
+.note .row{margin-top:8px}
+.note input{flex:1}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#221a2c;border:1px solid var(--line2);
+color:var(--txt);font-size:11.5px;padding:9px 16px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:85%;text-align:center}
+#toast.on{opacity:1;bottom:24px}
+footer{padding:12px 16px;border-top:1px solid var(--line);background:#0d0b12;font-size:10px;color:var(--dim);
+font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="row">
+    <span class="logo">MissAV Client</span>
+    <span class="tag" id="hostTag">detecting…</span>
+    <span class="sp"></span>
+    <span class="st"><i class="dot" id="dot"></i><span id="stTxt">接続中…</span></span>
+    <button class="g sm" id="btnLogin">ログイン</button>
+    <button class="g sm" id="btnSet">設定</button>
+  </div>
+  <div class="search">
+    <input id="q" placeholder="番号 / タイトル / 女優名 で検索" autocomplete="off">
+    <button id="btnSearch">検索</button>
+  </div>
+</header>
+
+<nav class="tabs" id="nav1"></nav>
+<nav class="tabs sub" id="nav2"></nav>
+
+<div class="bar">
+  <h2 id="vTitle">新着</h2>
+  <span class="cnt" id="vCnt"></span>
+  <span class="sp"></span>
+  <select id="fFilter" title="フィルタ">
+    <option value="">フィルタ無し</option>
+    <option>individual</option><option>multiple</option><option>jav</option><option>asiaav</option>
+    <option>uncensored-leak</option><option>uncensored</option>
+    <option>chinese-subtitle</option><option>english-subtitle</option>
+  </select>
+  <select id="fSort" title="並び順">
+    <option value="">並び: 既定</option>
+    <option value="released_at">発売日</option><option value="published_at">公開日</option>
+    <option value="today_views">本日</option><option value="weekly_views">週間</option>
+    <option value="monthly_views">月間</option><option value="views">総再生</option>
+    <option value="saved">保存数</option>
+  </select>
+  <select id="fLang" title="言語">
+    <option value="ja">JA</option><option value="en">EN</option><option value="cn">ZH</option>
+    <option value="tw">TW</option><option value="ko">KO</option>
+  </select>
+</div>
+
+<div class="bar" id="aBar" style="display:none">
+  <span class="cnt">女優フィルタ</span>
+  <select id="fCup"><option value="">カップ</option>
+    <option>A</option><option>B</option><option>C</option><option>D</option>
+    <option>E</option><option>F</option><option>G</option><option>H</option></select>
+  <select id="fAge"><option value="">年齢</option>
+    <option>18-20</option><option>21-25</option><option>26-30</option><option>31-35</option>
+    <option>36-40</option><option>41-50</option></select>
+  <select id="fHeight"><option value="">身長</option>
+    <option>145-150</option><option>151-155</option><option>156-160</option><option>161-165</option>
+    <option>166-170</option><option>171-175</option><option>176-180</option></select>
+  <input id="fDebut" placeholder="デビュー年" style="width:100px">
+  <select id="fASort"><option value="">並び: 既定</option>
+    <option value="videos">作品数</option><option value="debug">名前</option></select>
+  <button class="g sm" id="aApply">適用</button>
+</div>
+
+<main id="view"></main>
+<footer id="foot">-</footer>
+
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════ ユーティリティ ══════════ */
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+var LS={
+  get:function(k,d){try{var v=JSON.parse(localStorage.getItem("mv_"+k));return v===null?d:v}catch(e){return d}},
+  set:function(k,v){try{localStorage.setItem("mv_"+k,JSON.stringify(v))}catch(e){}}
+};
+
+/* ══════════ 状態 ══════════ */
+var API=LS.get("api",""), LANG=LS.get("lang","ja"), HOST="https://missav.ai";
+var FAVS=LS.get("favs",[]), FAVD=LS.get("favd",{}), LOGGED=false, READY=false;
+var V={kind:"list",src:"new",name:"",title:"新着",page:1,params:{},q:""};
+
+var LABELS={new:"新着",release:"リリース","hot-today":"本日人気","hot-weekly":"週間ランキング",
+"hot-monthly":"月間ランキング",uncensored:"無修正",fc2:"FC2",heyzo:"Heyzo",siro:"SIRO",luxu:"LUXU",
+madou:"麻豆",vr:"VR","chinese-subtitle":"中文字幕","english-subtitle":"英語字幕",saved:"保存済み",history:"視聴履歴"};
+var NAV1=["new","release","hot-today","hot-weekly","hot-monthly","uncensored","fc2","vr"];
+var NAV2=["chinese-subtitle","english-subtitle","heyzo","siro","luxu","madou","saved","history"];
+var SPEC=[["@actresses","女優"],["@ranking","女優ランキング"],["@genres","ジャンル"],
+          ["@makers","メーカー"],["@favs","★お気に入り"]];
+
+var abs=function(u){if(!u)return"";return /^https?:/i.test(u)?u:HOST+(u.charAt(0)==="/"?"":"/")+u};
+var codeOf=function(m){return m.number||((m.link||"").split("?")[0].split("/").filter(Boolean).pop()||"").toUpperCase()};
+var slug=function(link){return (link||"").split("?")[0].split("/").filter(Boolean).pop()||""};
+
+function toast(m,ms){var t=$("#toast");t.textContent=m;t.classList.add("on");
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("on")},ms||2600)}
+function status(ok,txt){var d=$("#dot");
+  d.classList.toggle("on",ok===true);d.classList.toggle("err",ok===false);
+  $("#stTxt").textContent=txt}
+
+/* ══════════ API ══════════ */
+function qs(p){var u=new URLSearchParams();Object.keys(p||{}).forEach(function(k){
+  var v=p[k];if(v!==undefined&&v!==null&&v!=="")u.set(k,v)});var s=u.toString();return s?"?"+s:""}
+
+function api(path,params){
+  return fetch(API+path+qs(params),{headers:{"Accept-Language":LANG,"Accept":"application/json"}})
+    .then(function(r){
+      return r.text().then(function(t){
+        var j=null;try{j=JSON.parse(t)}catch(e){}
+        if(!r.ok){var e=new Error((j&&(j.detail||j.message))||("HTTP "+r.status));e.code=r.status;throw e}
+        return j;
+      });
+    });
+}
+function post(path,body){
+  return fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(r){return r.text().then(function(t){
+      var j=null;try{j=JSON.parse(t)}catch(e){}
+      if(!r.ok)throw new Error((j&&(j.detail||j.message))||("HTTP "+r.status));
+      return j;})});
+}
+
+function detect(){
+  var c=[];if(API)c.push(API);c.push("","http://localhost:8000","http://127.0.0.1:8000");
+  c=c.filter(function(v,i){return c.indexOf(v)===i});
+  return (function next(i){
+    if(i>=c.length)return Promise.resolve(false);
+    return fetch(c[i]+"/api/config",{cache:"no-store"}).then(function(r){
+      if(!r.ok)throw 0;return r.json();
+    }).then(function(j){
+      API=c[i];LS.set("api",API);HOST=j.host||HOST;LOGGED=!!j.logged_in;READY=true;
+      $("#hostTag").textContent=String(j.host||"").replace(/^https?:\/\//,"").toUpperCase();
+      status(true,LOGGED?"ログイン済み":"未ログイン（閲覧可）");
+      $("#btnLogin").textContent=LOGGED?"アカウント":"ログイン";
+      return true;
+    }).catch(function(){return next(i+1)});
+  })(0);
+}
+
+/* ══════════ 描画部品 ══════════ */
+function skel(n){var s="";for(var i=0;i<(n||10);i++)s+='<div class="sk"></div>';return '<div class="grid">'+s+"</div>"}
+
+function card(m){
+  var code=codeOf(m),c=abs(m.cover),p=abs(m.preview),fav=FAVS.indexOf(code)>-1;
+  return '<article class="card" data-code="'+esc(code)+'">'+
+    '<div class="th">'+
+      '<img loading="lazy" src="'+esc(c)+'" alt="">'+
+      (p?'<video muted loop playsinline preload="none" src="'+esc(p)+'"></video>':"")+
+      (m.duration?'<span class="dur">'+esc(m.duration)+"</span>":"")+
+      (m.subtitle?'<span class="sub">'+esc(m.subtitle)+"</span>":"")+
+      '<button class="fav'+(fav?" on":"")+'" data-fav="'+esc(code)+'" title="お気に入り">★</button>'+
+    "</div>"+
+    "<h3>"+esc(m.title)+'</h3><span class="code">'+esc(code)+"</span></article>";
+}
+function actressCard(a){
+  return '<div class="acard" data-name="'+esc(a.name)+'">'+
+    '<img loading="lazy" src="'+esc(abs(a.cover))+'" alt="">'+
+    "<b>"+esc(a.name)+"</b><span>"+(a.videos?a.videos+"作品":(a.debut||"作品を見る"))+"</span></div>";
+}
+function taxItem(t){
+  return '<div class="titem" data-name="'+esc(t.name)+'"><div class="nm">'+esc(t.name)+
+    '</div><div class="ct">'+(t.count!=null?t.count+"作品":"→")+"</div></div>";
+}
+function rankItem(a,i){
+  return '<div class="titem" data-name="'+esc(a.name)+'"><div class="rk">'+(a.rank||i+1)+
+    '</div><img src="'+esc(abs(a.cover))+'" style="width:34px;height:34px;border-radius:99px;object-fit:cover;background:#000" alt="">'+
+    '<div class="nm">'+esc(a.name)+'</div><div class="ct">→</div></div>';
+}
+function pager(p,last){
+  if(!last||last<2)return "";
+  return '<div class="pager"><button class="g sm" data-pg="'+(p-1)+'"'+(p<=1?" disabled":"")+">← 前</button>"+
+    '<span class="cnt">'+p+" / "+last+"</span>"+
+    '<button class="g sm" data-pg="'+(p+1)+'"'+(p>=last?" disabled":"")+">次 →</button></div>";
+}
+function grid(d,fn,cls,empty){
+  var items=(d&&d.items)||[];
+  $("#vCnt").textContent=items.length?items.length+"件":"";
+  return items.length?'<div class="'+cls+'">'+items.map(fn).join("")+"</div>"+pager(V.page,d.last_page||0)
+    :'<div class="empty">'+(empty||"該当なし")+"</div>";
+}
+
+/* ══════════ ナビ ══════════ */
+function buildNav(){
+  $("#nav1").innerHTML=NAV1.map(function(k){return '<span class="chip" data-go="'+k+'">'+esc(LABELS[k]||k)+"</span>"}).join("");
+  $("#nav2").innerHTML=NAV2.map(function(k){return '<span class="chip" data-go="'+k+'">'+esc(LABELS[k]||k)+"</span>"}).join("")+
+    SPEC.map(function(s){return '<span class="chip" data-go="'+s[0]+'">'+esc(s[1])+"</span>"}).join("");
+  markNav();
+}
+function markNav(){$$(".chip").forEach(function(c){c.classList.toggle("on",c.dataset.go===V.key)})}
+
+function go(key){
+  V.key=key;V.page=1;V.params={};V.q="";
+  $("#fFilter").value="";$("#fSort").value="";
+  if(key.charAt(0)==="@"){
+    V.src="";
+    if(key==="@actresses"){V.kind="actresses";V.title="女優一覧";$("#aBar").style.display="flex"}
+    else if(key==="@ranking"){V.kind="ranking";V.title="女優ランキング";$("#aBar").style.display="none"}
+    else if(key==="@genres"){V.kind="genres";V.title="ジャンル";$("#aBar").style.display="none"}
+    else if(key==="@makers"){V.kind="makers";V.title="メーカー";$("#aBar").style.display="none"}
+    else if(key==="@favs"){V.kind="favs";V.title="★お気に入り";$("#aBar").style.display="none"}
+  }else{
+    V.kind="list";V.src=key;V.title=LABELS[key]||key;
+    $("#aBar").style.display="none";
+  }
+  markNav();load();
+}
+
+/* ══════════ 読み込み ══════════ */
+function load(){
+  var view=$("#view");
+  $("#vTitle").textContent=V.title;
+  $("#foot").textContent=(API||"(自動検出中)")+"  ·  "+V.kind+(V.src?"/"+V.src:"")+(V.name?"/"+V.name:"");
+  if(!READY){
+    view.innerHTML='<div class="empty">サーバーを検出できませんでした。<br>'+
+      '<code>uvicorn server:app --reload</code> を起動してから再試行してください。<br><br>'+
+      '<button id="reDetect">再検出</button></div>';
+    $("#reDetect").onclick=function(){detect().then(function(ok){ok?load():toast("サーバーが見つかりません")})};
+    return;
+  }
+  view.innerHTML=skel(10);
+
+  var p=Object.assign({},V.params);p.page=V.page;p.lang=LANG;
+  var req;
+  switch(V.kind){
+    case "list":     req=api("/api/list",Object.assign({src:V.src},p));break;
+    case "search":   req=api("/api/search/"+encodeURIComponent(V.q),p);break;
+    case "actress":  req=api("/api/actresses/"+encodeURIComponent(V.name),p);break;
+    case "genre":    req=api("/api/genres/"+encodeURIComponent(V.name),p);break;
+    case "maker":    req=api("/api/makers/"+encodeURIComponent(V.name),p);break;
+    case "actresses":req=api("/api/actresses",p);break;
+    case "ranking":  req=api("/api/actresses/ranking",{lang:LANG});break;
+    case "genres":   req=api("/api/genres",p);break;
+    case "makers":   req=api("/api/makers",p);break;
+    case "favs":     req=Promise.resolve({items:FAVS.map(function(c){
+                       var m=FAVD[c]||{};return {number:c,title:m.title,cover:m.cover,
+                       link:m.link,duration:m.duration}}).filter(function(m){return m.title})});break;
+    default:         req=api("/api/list",Object.assign({src:"new"},p));
+  }
+
+  req.then(function(d){
+    if(V.kind==="search"&&d.actresses&&d.actresses.length){
+      view.innerHTML='<div class="agrid">'+d.actresses.map(actressCard).join("")+"</div>"+
+        '<h3 style="font-size:13px;margin:18px 0 10px;color:var(--dim)">該当作品</h3>'+
+        grid(d,card,"grid","ヒット無し");
+      return;
+    }
+    if(V.kind==="actresses"){view.innerHTML=grid(d,actressCard,"agrid","女優が見つかりません");return}
+    if(V.kind==="ranking"){view.innerHTML=grid(d,rankItem,"tlist","データなし");return}
+    if(V.kind==="genres"||V.kind==="makers"){
+      var it=(d.items||[]);
+      $("#vCnt").textContent=it.length?it.length+"件":"";
+      view.innerHTML=it.length?'<div class="tlist">'+it.map(taxItem).join("")+"</div>"+pager(V.page,d.last_page||0)
+        :'<div class="empty">データなし</div>';
+      return;
+    }
+    view.innerHTML=grid(d,card,"grid","作品が見つかりません");
+  }).catch(function(e){
+    if(e.code===401){
+      view.innerHTML='<div class="empty">ログインが必要なページです<br><br><button id="goLogin">ログイン</button></div>';
+      $("#goLogin").onclick=openSettings;return;
+    }
+    view.innerHTML='<div class="empty">読み込みエラー<br>'+esc(e.message)+
+      '<br><br><button class="g sm" id="rt">再試行</button></div>';
+    $("#rt").onclick=load;
+  });
+}
+
+/* ══════════ 詳細モーダル ══════════ */
+function openModal(html){$("#sheet").innerHTML=html;$("#modal").classList.add("on")}
+function closeModal(){
+  if(window._hls){try{window._hls.destroy()}catch(e){};window._hls=null}
+  $("#modal").classList.remove("on");$("#sheet").innerHTML="";
+}
+
+function openMovie(code){
+  openModal('<div class="sbody"><div class="empty">読み込み中…</div></div>');
+  api("/api/movie/"+encodeURIComponent(code),{lang:LANG}).then(function(d){
+    var link=d.link||"",fav=FAVS.indexOf(code)>-1,rows="";
+    var kv=function(k,v){if(v)rows+="<dt>"+esc(k)+"</dt><dd>"+esc(v)+"</dd>"};
+    kv("品番",d.number||code);kv("発売日",d.release_date);kv("出演者",d.actress);
+    kv("ジャンル",d.genres);kv("シリーズ",d.series);kv("メーカー",d.maker);
+    kv("監督",d.director);kv("タグ",d.tags);
+
+    openModal('<div class="head row"><b>'+esc(d.title||code)+"</b>"+
+      '<button class="g sm" id="mFav" style="color:'+(fav?"var(--gold)":"inherit")+'">★</button>'+
+      '<button class="g sm" id="mClose">✕</button></div>'+
+      '<div class="sbody"><div id="player"></div>'+
+      '<div class="acts"><button id="aOpen">本家で開く ↗</button>'+
+        '<button class="g" id="aEmbed">埋め込み</button>'+
+        '<button class="g" id="aCopy">リンクをコピー</button>'+
+        '<button class="g" id="aReload">プレイヤー再読込</button></div>'+
+      '<dl class="kv">'+rows+"</dl>"+
+      (d.description?'<div class="desc">'+esc(d.description)+"</div>":"")+"</div>");
+
+    $("#mClose").onclick=closeModal;
+    $("#aOpen").onclick=function(){if(link)window.open(link,"_blank","noopener")};
+    $("#aCopy").onclick=function(){navigator.clipboard.writeText(link);toast("コピーしました")};
+    $("#aReload").onclick=function(){play(d)};
+    $("#aEmbed").onclick=function(){
+      if(window._hls){try{window._hls.destroy()}catch(e){};window._hls=null}
+      $("#player").innerHTML='<iframe src="'+esc(link)+'" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>';
+      toast("白い場合は「本家で開く」を使ってください");
+    };
+    $("#mFav").onclick=function(){toggleFav(code,d);this.style.color=FAVS.indexOf(code)>-1?"var(--gold)":"inherit"};
+    play(d);
+  }).catch(function(e){
+    openModal('<div class="head row"><b>'+esc(code)+'</b><button class="g sm" id="mClose">✕</button></div>'+
+      '<div class="sbody"><div class="empty">詳細取得エラー<br>'+esc(e.message)+"</div></div>");
+    $("#mClose").onclick=closeModal;
+  });
+}
+
+function play(d){
+  var box=$("#player");if(!box)return;
+  if(window._hls){try{window._hls.destroy()}catch(e){};window._hls=null}
+  if(d.m3u8){
+    var src=API+"/api/proxy?url="+encodeURIComponent(d.m3u8)+(d.link?"&ref="+encodeURIComponent(d.link):"");
+    box.innerHTML='<video id="pv" controls autoplay playsinline></video>';
+    var v=$("#pv");
+    if(window.Hls&&window.Hls.isSupported()){
+      var h=new window.Hls({maxBufferLength:30,enableWorker:true,lowLatencyMode:false});
+      h.loadSource(src);h.attachMedia(v);
+      h.on(window.Hls.Events.ERROR,function(_,x){
+        if(x.fatal)toast("HLSエラー: "+x.details+"（プレビュー再生を試してください）",4200)});
+      window._hls=h;
+    }else{v.src=src}
+  }else if(d.preview){
+    box.innerHTML='<video controls autoplay muted playsinline src="'+esc(abs(d.preview))+'"></video>';
+  }else{
+    box.innerHTML='<div class="noplay">再生ソースを取得できませんでした。<br>「本家で開く」か「埋め込み」をお試しください。</div>';
+  }
+}
+
+function toggleFav(code,d){
+  var i=FAVS.indexOf(code);
+  if(i>-1){FAVS.splice(i,1)}
+  else{
+    FAVS.push(code);
+    FAVD[code]={title:d.title,cover:d.cover,link:d.link,number:d.number||code,duration:d.duration};
+    LS.set("favd",FAVD);
+  }
+  LS.set("favs",FAVS);
+  $$('[data-fav="'+code+'"]').forEach(function(el){el.classList.toggle("on",FAVS.indexOf(code)>-1)});
+  toast(i>-1?"★ を外しました":"★ お気に入りに追加");
+  if(V.kind==="favs")load();
+}
+
+/* ══════════ 設定 / ログイン ══════════ */
+function openSettings(){
+  openModal('<div class="head row"><b>設定</b><span class="sp"></span><button class="g sm" id="sClose">✕</button></div>'+
+  '<div class="sbody">'+
+    '<div class="note"><h4>接続先</h4>API ベースURL（空欄で自動検出）'+
+      '<div class="row"><input id="sApi" value="'+esc(API)+'" placeholder="http://localhost:8000">'+
+      '<button id="sApiSave">保存</button></div>'+
+      '<div class="row"><button class="g sm" id="sPing">接続テスト</button>'+
+      '<span class="cnt" id="sHost">host: '+esc(HOST)+"</span></div></div>"+
+    '<div class="note"><h4>ログイン（任意）</h4>'+
+      '保存済み / 履歴 / 高画質 を使う場合のみ。アカウントが無くても一覧・検索・再生は可能です。'+
+      '<div class="row"><input id="sMail" placeholder="email" style="flex:1">'+
+      '<input id="sPass" type="password" placeholder="password" style="flex:1"></div>'+
+      '<div class="row"><button id="sLogin">ログイン</button>'+
+      '<button class="g" id="sLogout">ログアウト</button>'+
+      '<span class="cnt" id="sLogState">'+(LOGGED?"ログイン済み":"未ログイン")+"</span></div></div>"+
+    '<div class="note"><h4>Cookie を直接投入</h4>'+
+      'ブラウザの DevTools から <code>document.cookie</code> をコピーして貼り付け'+
+      '<div class="row"><input id="sCookie" placeholder="user_uuid=...; missav_session=...">'+
+      '<button class="g" id="sCookieSave">保存</button></div></div>'+
+  "</div>");
+
+  $("#sClose").onclick=closeModal;
+  $("#sApiSave").onclick=function(){
+    API=$("#sApi").value.trim().replace(/\/+$/,"");LS.set("api",API);
+    toast("保存しました");detect().then(function(ok){ok?load():toast("接続できませんでした")});
+  };
+  $("#sPing").onclick=function(){
+    $("#sHost").textContent="テスト中…";
+    api("/api/config").then(function(j){
+      $("#sHost").textContent="OK / host: "+(j.host||"?");
+      HOST=j.host||HOST;LOGGED=!!j.logged_in;toast("接続OK");
+    }).catch(function(e){$("#sHost").textContent="失敗: "+e.message});
+  };
+  $("#sLogin").onclick=function(){
+    var e=$("#sMail").value.trim(),p=$("#sPass").value;
+    if(!e||!p)return toast("email と password を入力してください");
+    post("/api/login",{email:e,password:p}).then(function(){
+      LOGGED=true;$("#sLogState").textContent="ログイン済み";
+      status(true,"ログイン済み");toast("ログイン成功");load();
+    }).catch(function(err){toast("ログイン失敗: "+err.message)});
+  };
+  $("#sLogout").onclick=function(){
+    post("/api/logout",{}).then(function(){
+      LOGGED=false;$("#sLogState").textContent="未ログイン";
+      status(true,"未ログイン（閲覧可）");toast("ログアウトしました");load();
+    }).catch(function(e){toast(e.message)});
+  };
+  $("#sCookieSave").onclick=function(){
+    post("/api/cookies",{cookie:$("#sCookie").value}).then(function(j){
+      toast("Cookie を投入しました ("+(j.count||0)+"件)");detect().then(load);
+    }).catch(function(e){toast(e.message)});
+  };
+}
+
+/* ══════════ イベント ══════════ */
+document.addEventListener("click",function(e){
+  var go1=e.target.closest("[data-go]");if(go1){go(go1.dataset.go);return}
+  var fav=e.target.closest("[data-fav]");
+  if(fav){
+    e.stopPropagation();
+    var code=fav.dataset.fav,c=fav.closest(".card"),d=null;
+    if(c)d={number:code,title:c.querySelector("h3").textContent,
+      cover:c.querySelector("img").getAttribute("src")};
+    toggleFav(code,d||{number:code,title:code});return;
+  }
+  var pg=e.target.closest("[data-pg]");
+  if(pg&&!pg.disabled){V.page=Number(pg.dataset.pg);load();window.scrollTo({top:0,behavior:"smooth"});return}
+  var card=e.target.closest(".card");
+  if(card){openMovie(card.dataset.code);return}
+  var ac=e.target.closest(".acard");
+  if(ac){V.kind="actress";V.name=ac.dataset.name;V.title=ac.dataset.name;V.page=1;V.params={};
+    $("#aBar").style.display="none";load();return}
+  var ti=e.target.closest(".titem");
+  if(ti){
+    if(V.kind==="ranking"){V.kind="actress";V.title=ti.dataset.name}
+    else{V.kind=(V.kind==="makers")?"maker":"genre";V.title=ti.dataset.name}
+    V.name=ti.dataset.name;V.page=1;V.params={};load();return;
+  }
+  if(e.target===$("#modal"))closeModal();
+});
+
+document.addEventListener("mouseover",function(e){
+  var th=e.target.closest(".th");if(!th)return;
+  var v=th.querySelector("video");if(!v)return;
+  th.classList.add("playing");v.play().catch(function(){});
+});
+document.addEventListener("mouseout",function(e){
+  var th=e.target.closest(".th");if(!th)return;
+  var v=th.querySelector("video");if(!v)return;
+  th.classList.remove("playing");v.pause();try{v.currentTime=0}catch(x){}
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeModal()});
+
+$("#btnSearch").onclick=function(){
+  var q=$("#q").value.trim();if(!q)return;
+  V.kind="search";V.q=q;V.title="検索: "+q;V.page=1;V.params={};
+  $("#aBar").style.display="none";
+  $$(".chip").forEach(function(c){c.classList.remove("on")});
+  load();
+};
+$("#q").addEventListener("keydown",function(e){if(e.key==="Enter")$("#btnSearch").click()});
+$("#fFilter").onchange=function(){V.params.filters=this.value;V.page=1;load()};
+$("#fSort").onchange=function(){V.params.sort=this.value;V.page=1;load()};
+$("#fLang").onchange=function(){LANG=this.value;LS.set("lang",LANG);load()};
+$("#aApply").onclick=function(){
+  V.params={cup:$("#fCup").value,age:$("#fAge").value,height:$("#fHeight").value,
+    debut:$("#fDebut").value,sort:$("#fASort").value};
+  V.page=1;load();
+};
+$("#btnSet").onclick=openSettings;
+$("#btnLogin").onclick=openSettings;
+
+/* ══════════ 起動 ══════════ */
+$("#fLang").value=LANG;
+buildNav();
+load();
+detect().then(function(ok){
+  if(!ok){status(false,"サーバー未検出");load();return}
+  load();
+});
+})();
+</script>
+</body>
+</html>
